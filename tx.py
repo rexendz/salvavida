@@ -1,13 +1,15 @@
 from serial import Serial, serialutil
 import time
 from threading import Thread
+import RPi.GPIO as GPIO
 
 
 class SerialListener:
     def __init__(self, baudrate=9600, timeout=0.5):
         
         self.ser = Serial('/dev/serial0', baudrate, timeout=timeout)
-
+        self.starting = time.time_ns()
+        self.ending = time.time_ns()
         self.stopped = False
         self.paused = False
         self.stream = ''
@@ -31,6 +33,9 @@ class SerialListener:
                 except:
                     self.stream = self.ser.readline().decode('ascii')
                 self.stream = self.stream.rstrip()
+                if self.stream is not '':
+                    print("HC12: " + self.stream + '\n')
+                    self.ending = time.time_ns()
 
     def stop(self):
         self.paused = False
@@ -56,17 +61,42 @@ class SerialListener:
 
     def read(self):
         return self.stream
+        
+    def getStart(self):
+        return self.starting
+        
+    def getEnd(self):
+        return self.ending
 
     def write(self, msg):
         self.ser.write(msg.encode())
+        self.starting = time.time_ns()
 
 
 if __name__ == "__main__":  # FOR DEBUGGING ONLY
     uno = SerialListener().start()
     uno.flush()
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.output(17, GPIO.LOW)
+    print("HC12 SET TO CONFIG MODE")
     try:
-        uno.write('AT')
-        print(uno.read())
+        while True:
+            starting, ending = 0, 0
+            data = input("\n")
+            GPIO.output(17, GPIO.HIGH)
+            print("GPIO SET TO TRANSMIT MODE")
+            ending = uno.getEnd()
+            uno.write('s')
+            starting = uno.getStart()
+            print("MESSAGE 's' HAS BEEN TRANSMITTED")
+            while(ending == uno.getEnd()):
+                None
+            ending = uno.getEnd()
+            print("Starting = {}\nEnding = {}\n".format(starting, ending))
+            diff = ending - starting
+            print("Diff = {}".format(diff))
+            distance = (0.0000000003 * diff)/2
+            print("Distance = {}m".format(distance))
     except KeyboardInterrupt:
         uno.stop()
-        sql.close()
