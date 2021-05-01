@@ -1,4 +1,5 @@
 from serial import Serial, serialutil
+from serial.serialutil import SerialException
 import time
 from threading import Thread
 import RPi.GPIO as GPIO
@@ -6,10 +7,8 @@ import RPi.GPIO as GPIO
 
 class SerialListener:
     def __init__(self, baudrate=9600, timeout=0.5):
-        
+        self.run = True
         self.ser = Serial('/dev/serial0', baudrate, timeout=timeout)
-        self.starting = time.time_ns()
-        self.ending = time.time_ns()
         self.stopped = False
         self.paused = False
         self.stream = ''
@@ -21,28 +20,30 @@ class SerialListener:
         return self
 
     def update(self):
-        while True:
+        while self.run:
             if not self.paused:
                 if self.stopped:
                     self.ser.close()
+                    self.run = False
                     print("Serial Thread Stopped")
                     print("Serial Port Closed")
-                    self.paused = True
                 try:
-                    self.stream = self.ser.readline().decode('utf-8')
-                except:
-                    self.stream = self.ser.readline().decode('ascii')
-                self.stream = self.stream.rstrip()
-                if self.stream is not '':
-                    print("HC12: " + self.stream + '\n')
-                    self.ending = time.time_ns()
+                    try:
+                        self.stream = self.ser.readline().decode('utf-8')
+                    except:
+                        self.stream = self.ser.readline().decode('ascii')
+                    self.stream = self.stream.rstrip()
+                except SerialException:
+                    self.run = False
 
     def stop(self):
         self.paused = False
         self.stopped = True
+        self.run = False
 
     def resume(self):
         self.paused = False
+        self.run = True
 
     def pause(self):
         self.paused = True
@@ -70,7 +71,6 @@ class SerialListener:
 
     def write(self, msg):
         self.ser.write(msg.encode())
-        self.starting = time.time_ns()
 
 
 if __name__ == "__main__":  # FOR DEBUGGING ONLY
@@ -79,24 +79,20 @@ if __name__ == "__main__":  # FOR DEBUGGING ONLY
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(17, GPIO.OUT)
     GPIO.output(17, GPIO.LOW)
+    data = ''
     print("HC12 SET TO CONFIG MODE")
     try:
         while True:
-            starting, ending = 0, 0
-            data = input("\n")
-            GPIO.output(17, GPIO.HIGH)
-            print("GPIO SET TO TRANSMIT MODE")
-            ending = uno.getEnd()
-            uno.write('s')
-            starting = uno.getStart()
-            print("MESSAGE 's' HAS BEEN TRANSMITTED")
-            while(ending == uno.getEnd()):
-                None
-            ending = uno.getEnd()
-            print("Starting = {}\nEnding = {}\n".format(starting, ending))
-            diff = ending - starting
-            print("Diff = {}".format(diff))
-            distance = (0.0000000003 * diff)/2
-            print("Distance = {}m".format(distance))
+            time.sleep(1)
+            GPIO.output(17, GPIO.LOW)
+            uno.write('AT')
+            rx = ''
+            while rx == '':
+                rx = uno.read()
+            if rx == 'OK':
+                print("All systems go!")
+            else:
+                print("Meh")
+            
     except KeyboardInterrupt:
         uno.stop()
