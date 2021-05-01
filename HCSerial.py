@@ -85,14 +85,12 @@ if __name__ == "__main__":  # FOR DEBUGGING ONLY
         while True:
             time.sleep(1)
             GPIO.output(17, GPIO.LOW)
-            uno.write('AT')
-            rx = ''
-            while rx == '':
-                rx = uno.read()
-            if rx == 'OK':
-                print("All systems go!")
-            else:
-                print("Meh")
+            data = input("\n")
+            uno.write(data)
+            read = ''
+            while read == '':
+                read = uno.read()
+            print(read)
             
     except KeyboardInterrupt:
         uno.stop()

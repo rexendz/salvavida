@@ -39,29 +39,59 @@ class Window(QWidget): # Inherits from QWidget class
 class Worker1(QObject):
     finished = pyqtSignal()
     hc12Detected = pyqtSignal()
+    hc12Baud = pyqtSignal()
+    hc12Power = pyqtSignal()
+    hc12Configured = pyqtSignal()
         
     def __init__(self, hc12, parent=None):
         QObject.__init__(self, parent=parent)
         self.hc12 = hc12
         self.continue_run = True
+        GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(17, GPIO.OUT)
         GPIO.output(17, GPIO.LOW)
                 
     def do_work(self):
         while self.continue_run:
-            QThread.sleep(1)
-            print("Sending 'AT'")
+            QThread.sleep(1.5)
             self.hc12.write("AT")
             read = ''
             while read == '':
                 read = self.hc12.read()
             if read == 'OK':
+                read = ''
+                QThread.sleep(1)
                 self.hc12Detected.emit()
-                print("OK!")
-                self.stop()
+                self.hc12.write("AT+B9600")
+                while read == '':
+                    read = self.hc12.read()
+                if read == 'OK+B9600':
+                    read = ''
+                    QThread.sleep(1.5)
+                    self.hc12Baud.emit()
+                    self.hc12.write("AT+P8")
+                    while read == '':
+                        read = self.hc12.read()
+                    if read == 'OK+P8':
+                        read = ''
+                        QThread.sleep(2.3)
+                        self.hc12Power.emit()
+                        self.hc12.write("AT+C001")
+                        while read == '':
+                            read = self.hc12.read()
+                        if read == 'OK+C001':
+                            QThread.sleep(1.8)
+                            self.hc12Configured.emit()
+                            self.stop()
+                        else:
+                            print("ERROR SETTING CHANNEL!")
+                    else:
+                        print("ERROR SETTING POWER!")
+                else:
+                    print("ERROR SETTING BAUD RATE!")
             else:
-                QThread.sleep(0.5)
+                print("HC12 NOT COMMUNICATING!")
             
                         
     def stop(self):
@@ -80,6 +110,7 @@ class StartPage(Window):
         self.movie2 = None
         self.lbl1 = None
         self.lbl2 = None
+        self.lbl3 = None
         self.btn1 = None
         self.InitWindow()
         self.InitLayout()
@@ -95,8 +126,9 @@ class StartPage(Window):
         self.lbl2 = QLabel(self) # placeholder for gif
         self.lbl2.setAlignment(Qt.AlignHCenter)
                 
-        lbl3 = QLabel(" ")
-        lbl3.setStyleSheet("color: #FAFAFA; font-family: Sanserif; font: 15px")
+        self.lbl3 = QLabel("Trying to communicate with the transceiver...")
+        self.lbl3.setAlignment(Qt.AlignHCenter)
+        self.lbl3.setStyleSheet("color: #FAFAFA; font-family: Sanserif; font: 10px")
                 
         self.movie1 = QMovie(self.userpath + '/salvavida/load.gif')
         self.movie1.setScaledSize(QtCore.QSize(200, 150))
@@ -108,7 +140,8 @@ class StartPage(Window):
                 
         self.movie1.start()
         
-        self.btn1 = QPushButton("Continue")
+        self.btn1 = QPushButton("Please Wait...")
+        self.btn1.setStyleSheet("font-family: Sanserif; font: 15px")
         self.btn1.setEnabled(False)
         self.btn1.clicked.connect(self.NextPage)
                 
@@ -116,7 +149,7 @@ class StartPage(Window):
         self.setStyleSheet("background-color: #1c273a")
         self.vbox.addWidget(self.lbl1)
         self.vbox.addWidget(self.lbl2)
-        self.vbox.addWidget(lbl3)
+        self.vbox.addWidget(self.lbl3)
         self.vbox.addWidget(self.btn1)
                 
     def InitWorker(self):
@@ -127,6 +160,9 @@ class StartPage(Window):
         self.worker.moveToThread(self.thread)
         
         self.worker.hc12Detected.connect(self.Detected)
+        self.worker.hc12Baud.connect(self.Baud)
+        self.worker.hc12Power.connect(self.Power)
+        self.worker.hc12Configured.connect(self.Configured)
         
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
@@ -138,10 +174,22 @@ class StartPage(Window):
         self.thread.start()
         
     def Detected(self):
-        self.lbl1.setText("HC12 Successfully Detected!")
+        self.lbl1.setText("Configuring HC12...")
+        self.lbl3.setText("HC12 is Communicating.\nSetting Baud Rate...")
+        
+    def Baud(self):
+        self.lbl3.setText("Baud Rate Change Success.\nSetting Power...")
+        
+    def Power(self):
+        self.lbl3.setText("Transmitting Power set to 20dBm.\nSetting Channel...")
+        
+    def Configured(self):
+        self.lbl1.setText("HC12 Successfully Configured!")
+        self.lbl3.setText("Channel set to C001")
         self.lbl2.setMovie(self.movie2)
         self.movie2.start()
         self.setStyleSheet("background-color: #2d2d2d")
+        self.btn1.setText("Continue")
         self.btn1.setEnabled(True)
         
     def NextPage(self):
@@ -155,9 +203,11 @@ class ReadPage(Window):
     def __init__(self, prev_window, hc12):
         super().__init__()
         self.hc12 = hc12
+        self.lbl3 = None
+        self.movie = None
         self.InitWindow()
         self.InitLayout()
-        self.val = 9999999999
+        self.val = 0.00
         self.lbl_distance = None
         self.InitComponents()
         self.show()
@@ -165,10 +215,22 @@ class ReadPage(Window):
             prev_window.hide()
                 
     def InitComponents(self):
+        self.setStyleSheet("background-color: #2a2826")
         lbl1 = QLabel("Distance: ")
         lbl2 = QLabel("System of Measurement")
         self.lbl_distance = QLabel("{:.2f}{}".format(self.val, "m"))
         self.lbl_distance.setAlignment(Qt.AlignRight)
+        
+        self.lbl3 = QLabel()
+        self.lbl3.setAlignment(Qt.AlignHCenter)
+        
+        self.movie = QMovie(self.userpath + '/salvavida/read.gif')
+        self.movie.setScaledSize(QtCore.QSize(400, 300))
+        
+        self.lbl3.setMovie(self.movie)
+        
+        self.movie.start()
+        
         btn1 = QPushButton("Meters", self)
         btn2 = QPushButton("Feet", self)
         btn3 = QPushButton("Nautical Miles", self)
@@ -189,14 +251,15 @@ class ReadPage(Window):
         btn2.clicked.connect(self.btn2Action)
         btn3.clicked.connect(self.btn3Action)
         
-        lbl1.setStyleSheet("color: #c43e00; font: 30px; font-family: Sanserif")
-        self.lbl_distance.setStyleSheet("color: #c43e00; font: 30px; font-family: Sanserif")
+        lbl1.setStyleSheet("color: #FAFAFA; font: 30px; font-family: Sanserif")
+        self.lbl_distance.setStyleSheet("color: #FAFAFA; font: 30px; font-family: Sanserif")
         hbox1.addWidget(lbl1)
         hbox1.addWidget(self.lbl_distance)
         hbox2.addWidget(btn1)
         hbox2.addWidget(btn2)
         hbox2.addWidget(btn3)
         vbox1.addLayout(hbox1)
+        vbox1.addWidget(self.lbl3)
         vbox2.addWidget(lbl2)
         vbox2.addLayout(hbox2)
         self.vbox.addLayout(vbox1)
