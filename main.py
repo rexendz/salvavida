@@ -25,7 +25,7 @@ class Window(QWidget): # Inherits from QWidget class
     def InitWindow(self):
         self.setWindowTitle(self.title) # Sets the window title to the title name declared earlier
         self.setGeometry(self.left, self.top, self.width, self.height) # Set the dimension of the Window
-        self.setStyleSheet("background-color: #1c273a") # Set the background color of the window to gray
+        self.setStyleSheet("background-color: #2d2d2d") # Set the background color of the window to gray
         self.setMaximumHeight(self.height) # Constrain Dimensions
         self.setMaximumWidth(self.width)   # ^
         self.setMinimumHeight(self.height) # ^
@@ -39,7 +39,7 @@ class Window(QWidget): # Inherits from QWidget class
 class Worker1(QObject):
     finished = pyqtSignal()
     hc12Detected = pyqtSignal()
-	
+        
     def __init__(self, hc12, parent=None):
         QObject.__init__(self, parent=parent)
         self.hc12 = hc12
@@ -47,154 +47,188 @@ class Worker1(QObject):
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(17, GPIO.OUT)
         GPIO.output(17, GPIO.LOW)
-		
+                
     def do_work(self):
         while self.continue_run:
+            QThread.sleep(1)
+            print("Sending 'AT'")
             self.hc12.write("AT")
             read = ''
-        while read == '':
-		read = self.hc12.read()
-	    if read == 'OK':
-		self.hc12Detected.emit()
-		print("OK!")
-		self.stop()
-	    else:
-		QThread.sleep(0.5)
-	    
-			
+            while read == '':
+                read = self.hc12.read()
+            if read == 'OK':
+                self.hc12Detected.emit()
+                print("OK!")
+                self.stop()
+            else:
+                QThread.sleep(0.5)
+            
+                        
     def stop(self):
-	self.continue_run = False
+        self.continue_run = False
 
 class StartPage(Window):
-    def __init__(self, hc12):
-	super().__init__()
-	self.hc12 = hc12
-	self.thread = None
-	self.worker = None
-	self.InitWindow()
-	self.InitLayout()
-	self.InitComponents()
-	self.InitWorker()
-	self.show()
-		
+    switch_next = pyqtSignal(QWidget)
+    stop_signal = pyqtSignal()
+    
+    def __init__(self, prev_window, hc12):
+        super().__init__()
+        self.hc12 = hc12
+        self.thread = None
+        self.worker = None
+        self.movie1 = None
+        self.movie2 = None
+        self.lbl1 = None
+        self.lbl2 = None
+        self.btn1 = None
+        self.InitWindow()
+        self.InitLayout()
+        self.InitComponents()
+        self.InitWorker()
+        self.show()
+                
     def InitComponents(self):
-	lbl1 = QLabel("Checking Transceiver Module...")
-	lbl1.setStyleSheet("color: #efefef; font: 20px; font-family: Sanserif")
-	lbl1.setAlignment(Qt.AlignHCenter)
-		
-	lbl2 = QLabel(self) # placeholder for gif
-	lbl2.setAlignment(Qt.AlignHCenter)
-		
-	lbl3 = QLabel("Attempting communication with the Transceiver Module")
-	lbl3.setStyleSheet("color: #FAFAFA; font-family: Sanserif; font: 15px")
-		
-	movie1 = QMovie(self.userpath + '/salvavida/load.gif')
-	movie1.setScaledSize(QtCore.QSize(150, 150))
-		
-	movie2 = QMovie(self.userpath + '/salvavida/ok.gif')
-	movie2.setScaledSize(QtCore.QSize(150, 150))
-		
-	lbl2.setMovie(movie1)
-		
-	movie1.start()
-		
-		
-	self.vbox.addWidget(lbl1)
-	self.vbox.addWidget(lbl2)
-	self.vbox.addWidget(lbl3)
-		
+        self.lbl1 = QLabel("Checking Transceiver Module...")
+        self.lbl1.setStyleSheet("color: #efefef; font: 25px; font-family: Sanserif")
+        self.lbl1.setAlignment(Qt.AlignHCenter)
+                
+        self.lbl2 = QLabel(self) # placeholder for gif
+        self.lbl2.setAlignment(Qt.AlignHCenter)
+                
+        lbl3 = QLabel(" ")
+        lbl3.setStyleSheet("color: #FAFAFA; font-family: Sanserif; font: 15px")
+                
+        self.movie1 = QMovie(self.userpath + '/salvavida/load.gif')
+        self.movie1.setScaledSize(QtCore.QSize(200, 150))
+                
+        self.movie2 = QMovie(self.userpath + '/salvavida/check.gif')
+        self.movie2.setScaledSize(QtCore.QSize(200, 150))
+                
+        self.lbl2.setMovie(self.movie1)
+                
+        self.movie1.start()
+        
+        self.btn1 = QPushButton("Continue")
+        self.btn1.setEnabled(False)
+        self.btn1.clicked.connect(self.NextPage)
+                
+                
+        self.setStyleSheet("background-color: #1c273a")
+        self.vbox.addWidget(self.lbl1)
+        self.vbox.addWidget(self.lbl2)
+        self.vbox.addWidget(lbl3)
+        self.vbox.addWidget(self.btn1)
+                
     def InitWorker(self):
-	self.thread = QThread(parent=self)
-	self.worker = Worker1(self.hc12)
-	
-	self.stop_signal.connect(self.worker.stop)
-	self.worker.moveToThread(self.thread)
-	
-	self.worker.hc12Detected.connect(self.NextPage)
-	
-	self.worker.finished.connect(self.thread.quit)
-	self.worker.finished.connect(self.worker.deleteLater)
-	self.thread.finished.connect(self.thread.deleteLater)
-	self.thread.finished.connect(self.worket.stop)
-	
-	self.thread.started.connect(self.worker.do_work)
-	
-	self.thread.start()
-		
+        self.thread = QThread(parent=self)
+        self.worker = Worker1(self.hc12)
+        
+        self.stop_signal.connect(self.worker.stop)
+        self.worker.moveToThread(self.thread)
+        
+        self.worker.hc12Detected.connect(self.Detected)
+        
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.finished.connect(self.worker.stop)
+        
+        self.thread.started.connect(self.worker.do_work)
+        
+        self.thread.start()
+        
+    def Detected(self):
+        self.lbl1.setText("HC12 Successfully Detected!")
+        self.lbl2.setMovie(self.movie2)
+        self.movie2.start()
+        self.setStyleSheet("background-color: #2d2d2d")
+        self.btn1.setEnabled(True)
+        
+    def NextPage(self):
+        self.switch_next.emit(self)
+                
     def closeEvent(self, event):
-	self.hc12.stop()
-	print("HC12 STOPPED")
+        self.hc12.stop()
+        print("HC12 STOPPED")
 
 class ReadPage(Window):
-    def __init__(self):
-	super().__init__()
-	self.InitWindow()
-	self.InitLayout()
-	self.val = 9999999999
-	self.lbl_distance = None
-	self.InitComponents()
-	self.show()
-		
+    def __init__(self, prev_window, hc12):
+        super().__init__()
+        self.hc12 = hc12
+        self.InitWindow()
+        self.InitLayout()
+        self.val = 9999999999
+        self.lbl_distance = None
+        self.InitComponents()
+        self.show()
+        if prev_window is not None:
+            prev_window.hide()
+                
     def InitComponents(self):
-	lbl1 = QLabel("Distance: ")
-	lbl2 = QLabel("System of Measurement")
-	self.lbl_distance = QLabel("{:.2f}{}".format(self.val, "m"))
-	self.lbl_distance.setAlignment(Qt.AlignRight)
-	btn1 = QPushButton("Meters", self)
-	btn2 = QPushButton("Feet", self)
-	btn3 = QPushButton("Nautical Miles", self)
-	lbl1.setAlignment(Qt.AlignLeft)
-	
-	lbl2.setStyleSheet("color: #efefef; font: 20px; font-family: Sanserif")
-	lbl2.setAlignment(Qt.AlignBottom)
-	btn1.setStyleSheet("background-color: #ff6f00; color: #212121; font-family: Sanserif; font: 20px")
-	btn2.setStyleSheet("background-color: #ff6f00; color: #212121; font: 20px; font-family: Sanserif")
-	btn3.setStyleSheet("background-color: #ff6f00; color: #212121; font: 20px; font-family: Sanserif")
-	hbox1 = QHBoxLayout()
-	hbox2 = QHBoxLayout()
-	vbox1 = QVBoxLayout()
-	vbox2 = QVBoxLayout()
-	vbox2.setSpacing(1)
-	
-	btn1.clicked.connect(self.btn1Action)
-	btn2.clicked.connect(self.btn2Action)
-	btn3.clicked.connect(self.btn3Action)
-	
-	lbl1.setStyleSheet("color: #c43e00; font: 30px; font-family: Sanserif")
-	self.lbl_distance.setStyleSheet("color: #c43e00; font: 30px; font-family: Sanserif")
-	hbox1.addWidget(lbl1)
-	hbox1.addWidget(self.lbl_distance)
-	hbox2.addWidget(btn1)
-	hbox2.addWidget(btn2)
-	hbox2.addWidget(btn3)
-	vbox1.addLayout(hbox1)
-	vbox2.addWidget(lbl2)
-	vbox2.addLayout(hbox2)
-	self.vbox.addLayout(vbox1)
-	self.vbox.addLayout(vbox2)
-		
+        lbl1 = QLabel("Distance: ")
+        lbl2 = QLabel("System of Measurement")
+        self.lbl_distance = QLabel("{:.2f}{}".format(self.val, "m"))
+        self.lbl_distance.setAlignment(Qt.AlignRight)
+        btn1 = QPushButton("Meters", self)
+        btn2 = QPushButton("Feet", self)
+        btn3 = QPushButton("Nautical Miles", self)
+        lbl1.setAlignment(Qt.AlignLeft)
+        
+        lbl2.setStyleSheet("color: #efefef; font: 20px; font-family: Sanserif")
+        lbl2.setAlignment(Qt.AlignBottom)
+        btn1.setStyleSheet("background-color: #ff6f00; color: #212121; font-family: Sanserif; font: 20px")
+        btn2.setStyleSheet("background-color: #ff6f00; color: #212121; font: 20px; font-family: Sanserif")
+        btn3.setStyleSheet("background-color: #ff6f00; color: #212121; font: 20px; font-family: Sanserif")
+        hbox1 = QHBoxLayout()
+        hbox2 = QHBoxLayout()
+        vbox1 = QVBoxLayout()
+        vbox2 = QVBoxLayout()
+        vbox2.setSpacing(1)
+        
+        btn1.clicked.connect(self.btn1Action)
+        btn2.clicked.connect(self.btn2Action)
+        btn3.clicked.connect(self.btn3Action)
+        
+        lbl1.setStyleSheet("color: #c43e00; font: 30px; font-family: Sanserif")
+        self.lbl_distance.setStyleSheet("color: #c43e00; font: 30px; font-family: Sanserif")
+        hbox1.addWidget(lbl1)
+        hbox1.addWidget(self.lbl_distance)
+        hbox2.addWidget(btn1)
+        hbox2.addWidget(btn2)
+        hbox2.addWidget(btn3)
+        vbox1.addLayout(hbox1)
+        vbox2.addWidget(lbl2)
+        vbox2.addLayout(hbox2)
+        self.vbox.addLayout(vbox1)
+        self.vbox.addLayout(vbox2)
+                
     def btn1Action(self):
-	val = self.val
-	self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
+        val = self.val
+        self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
     def btn2Action(self):
-	val = self.val*3.28084
-	self.lbl_distance.setText("{:.2f}{}".format(val, "ft"))
+        val = self.val*3.28084
+        self.lbl_distance.setText("{:.2f}{}".format(val, "ft"))
     def btn3Action(self):
-	val = self.val*0.000539957
-	self.lbl_distance.setText("{:.2f}{}".format(val, "Nm"))
-	
-	
+        val = self.val*0.000539957
+        self.lbl_distance.setText("{:.2f}{}".format(val, "Nm"))
+                
+    def closeEvent(self, event):
+        self.hc12.stop()
+        print("HC12 STOPPED")
+        
+        
 class Controller:
     def __init__(self, ser):
         self.hc12 = ser
         self.StartPage = None # First page
         self.ReadPage = None
-	
+        
     def show_start(self):
-        self.StartPage = StartPage(self.hc12)
+        self.StartPage = StartPage(None, self.hc12)
+        self.StartPage.switch_next.connect(self.show_read)
 
-    def show_read(self): # Show the read page (second window)
-        self.ReadPage = ReadPage() # pass startpage with the arduino listener
+    def show_read(self, prev_window): # Show the read page (second window)
+        self.ReadPage = ReadPage(prev_window, self.hc12) # pass startpage with the arduino listener
         
 
 
