@@ -6,6 +6,7 @@ from HCSerial import SerialListener
 import RPi.GPIO as GPIO
 import os
 import sys
+import time
 
 
 
@@ -92,6 +93,41 @@ class Worker1(QObject):
                     print("ERROR SETTING BAUD RATE!")
             else:
                 print("HC12 NOT COMMUNICATING!")
+            
+                        
+    def stop(self):
+        self.continue_run = False
+
+class Worker2(QObject):
+    finished = pyqtSignal()
+    updateDistance = pyqtSignal(float)
+        
+    def __init__(self, hc12, parent=None):
+        QObject.__init__(self, parent=parent)
+        self.hc12 = hc12
+        self.continue_run = True
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(17, GPIO.OUT)
+        GPIO.output(17, GPIO.HIGH)
+                
+    def do_work(self):
+        while self.continue_run:
+            data = ''
+            startTime = time.time_ns()
+            print("Start time: {}".format(startTime))
+            self.hc12.write('$')
+            print("DATA SENT")
+            while data is '':
+                data = self.hc12.read()
+            print("DATA RECEIVED: " + data)
+            endTime = time.time_ns()
+            print("End time: {}".format(endTime))
+            duration = ((endTime - startTime)/20000) - 62000
+            print("DURATION: {}".format(duration))
+            distance = (0.299702601 * duration)/3396.632332
+            self.updateDistance.emit(distance)
+            QThread.sleep(1)
             
                         
     def stop(self):
@@ -200,19 +236,41 @@ class StartPage(Window):
         print("HC12 STOPPED")
 
 class ReadPage(Window):
+    stop_signal = pyqtSignal()
+    
     def __init__(self, prev_window, hc12):
         super().__init__()
         self.hc12 = hc12
         self.lbl3 = None
         self.movie = None
+        self.currentSys = 0
         self.InitWindow()
         self.InitLayout()
         self.val = 0.00
         self.lbl_distance = None
         self.InitComponents()
+        self.InitWorker()
         self.show()
         if prev_window is not None:
             prev_window.hide()
+                
+    def InitWorker(self):
+        self.thread = QThread(parent=self)
+        self.worker = Worker2(self.hc12)
+        
+        self.stop_signal.connect(self.worker.stop)
+        self.worker.moveToThread(self.thread)
+        
+        self.worker.updateDistance.connect(self.UpdateDistance)
+        
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.finished.connect(self.worker.stop)
+        
+        self.thread.started.connect(self.worker.do_work)
+        
+        self.thread.start()
                 
     def InitComponents(self):
         self.setStyleSheet("background-color: #2a2826")
@@ -264,16 +322,31 @@ class ReadPage(Window):
         vbox2.addLayout(hbox2)
         self.vbox.addLayout(vbox1)
         self.vbox.addLayout(vbox2)
+        
+    def updateVal(self):
+        if(self.currentSys == 0):
+            val = self.val
+            self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
+        elif(self.currentSys == 1):
+            val = self.val*3.28084
+            self.lbl_distance.setText("{:.2f}{}".format(val, "ft"))
+        elif(self.currentSys == 2):
+            val = self.val*0.000539957
+            self.lbl_distance.setText("{:.2f}{}".format(val, "Nm"))
                 
     def btn1Action(self):
-        val = self.val
-        self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
+        self.currentSys = 0
+        self.updateVal()
     def btn2Action(self):
-        val = self.val*3.28084
-        self.lbl_distance.setText("{:.2f}{}".format(val, "ft"))
+        self.currentSys = 1
+        self.updateVal()
     def btn3Action(self):
-        val = self.val*0.000539957
-        self.lbl_distance.setText("{:.2f}{}".format(val, "Nm"))
+        self.currentSys = 2
+        self.updateVal()
+        
+    def UpdateDistance(self, distance):
+        self.val = distance
+        self.updateVal()
                 
     def closeEvent(self, event):
         self.hc12.stop()
