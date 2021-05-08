@@ -64,10 +64,10 @@ class Worker1(QObject):
                 read = ''
                 QThread.sleep(1)
                 self.hc12Detected.emit()
-                self.hc12.write("AT+B9600")
+                self.hc12.write("AT+B1200")
                 while read == '':
                     read = self.hc12.read()
-                if read == 'OK+B9600':
+                if read == 'OK+B1200':
                     read = ''
                     QThread.sleep(1.5)
                     self.hc12Baud.emit()
