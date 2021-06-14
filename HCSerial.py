@@ -6,7 +6,7 @@ import RPi.GPIO as GPIO
 
 
 class SerialListener:
-    def __init__(self, baudrate=9600, timeout=0.5):
+    def __init__(self, baudrate=9600, timeout=0.005):
         self.run = True
         self.ser = Serial('/dev/serial0', baudrate, timeout=timeout)
         self.stopped = False

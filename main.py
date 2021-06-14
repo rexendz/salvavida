@@ -64,10 +64,10 @@ class Worker1(QObject):
                 read = ''
                 QThread.sleep(1)
                 self.hc12Detected.emit()
-                self.hc12.write("AT+B1200")
+                self.hc12.write("AT+B9600")
                 while read == '':
                     read = self.hc12.read()
-                if read == 'OK+B1200':
+                if read == 'OK+B9600':
                     read = ''
                     QThread.sleep(1.5)
                     self.hc12Baud.emit()
@@ -100,11 +100,13 @@ class Worker1(QObject):
 
 class Worker2(QObject):
     finished = pyqtSignal()
+    found = pyqtSignal()
     updateDistance = pyqtSignal(float)
         
     def __init__(self, hc12, parent=None):
         QObject.__init__(self, parent=parent)
         self.hc12 = hc12
+        self.received = False
         self.continue_run = True
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
@@ -113,21 +115,30 @@ class Worker2(QObject):
                 
     def do_work(self):
         while self.continue_run:
-            data = ''
-            startTime = time.time_ns()
-            print("Start time: {}".format(startTime))
-            self.hc12.write('$')
-            print("DATA SENT")
-            while data is '':
-                data = self.hc12.read()
-            print("DATA RECEIVED: " + data)
-            endTime = time.time_ns()
-            print("End time: {}".format(endTime))
-            duration = ((endTime - startTime)/20000) - 62000
-            print("DURATION: {}".format(duration))
-            distance = (0.299702601 * duration)/3396.632332
-            self.updateDistance.emit(distance)
-            QThread.sleep(1)
+            if self.received is False:
+                data = ''
+                while data is '':
+                    data = self.hc12.read()
+                print(data)
+                if 'SOS' in data:
+                    self.hc12.write('SOS')
+                    self.received = True
+                    self.found.emit()
+                    QThread.sleep(1)
+            else:
+                data = ''
+                t1 = time.time_ns()
+                self.hc12.write('$')
+                print("Data Sent!")
+                t2 = time.time_ns()
+                while data is '':
+                    data = self.hc12.read()
+                print("Data Received!")
+                endTime = time.time_ns()
+                duration = ((endTime - t2)/2) - 62000000
+                distance = (0.299702601 * duration)
+                self.updateDistance.emit(distance)
+                QThread.sleep(1)
             
                         
     def stop(self):
@@ -262,6 +273,7 @@ class ReadPage(Window):
         self.worker.moveToThread(self.thread)
         
         self.worker.updateDistance.connect(self.UpdateDistance)
+        self.worker.found.connect(self.Found)
         
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
@@ -274,9 +286,10 @@ class ReadPage(Window):
                 
     def InitComponents(self):
         self.setStyleSheet("background-color: #2a2826")
-        lbl1 = QLabel("Distance: ")
+        self.lbl1 = QLabel("Receiver: ")
         lbl2 = QLabel("System of Measurement")
         self.lbl_distance = QLabel("{:.2f}{}".format(self.val, "m"))
+        self.lbl_distance.setText("Not Found")
         self.lbl_distance.setAlignment(Qt.AlignRight)
         
         self.lbl3 = QLabel()
@@ -292,7 +305,7 @@ class ReadPage(Window):
         btn1 = QPushButton("Meters", self)
         btn2 = QPushButton("Feet", self)
         btn3 = QPushButton("Nautical Miles", self)
-        lbl1.setAlignment(Qt.AlignLeft)
+        self.lbl1.setAlignment(Qt.AlignLeft)
         
         lbl2.setStyleSheet("color: #efefef; font: 20px; font-family: Sanserif")
         lbl2.setAlignment(Qt.AlignBottom)
@@ -309,9 +322,9 @@ class ReadPage(Window):
         btn2.clicked.connect(self.btn2Action)
         btn3.clicked.connect(self.btn3Action)
         
-        lbl1.setStyleSheet("color: #FAFAFA; font: 30px; font-family: Sanserif")
+        self.lbl1.setStyleSheet("color: #FAFAFA; font: 30px; font-family: Sanserif")
         self.lbl_distance.setStyleSheet("color: #FAFAFA; font: 30px; font-family: Sanserif")
-        hbox1.addWidget(lbl1)
+        hbox1.addWidget(self.lbl1)
         hbox1.addWidget(self.lbl_distance)
         hbox2.addWidget(btn1)
         hbox2.addWidget(btn2)
@@ -326,7 +339,10 @@ class ReadPage(Window):
     def updateVal(self):
         if(self.currentSys == 0):
             val = self.val
-            self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
+            if self.val < 0:
+                self.lbl_distance.setText("<1{}".format("m"))
+            else:
+                self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
         elif(self.currentSys == 1):
             val = self.val*3.28084
             self.lbl_distance.setText("{:.2f}{}".format(val, "ft"))
@@ -342,6 +358,10 @@ class ReadPage(Window):
         self.updateVal()
     def btn3Action(self):
         self.currentSys = 2
+        self.updateVal()
+        
+    def Found(self):
+        self.lbl1.setText("Distance:")
         self.updateVal()
         
     def UpdateDistance(self, distance):
