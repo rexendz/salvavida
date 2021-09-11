@@ -140,8 +140,11 @@ class Worker2(QObject):
         QObject.__init__(self, parent=parent)
         global root
         self.data = root.child('data')
+<<<<<<< HEAD
         self.result = self.data.get()
         self.rig = self.result.get('rig')
+=======
+>>>>>>> 9d56d336f77a550eba18ad1469e1c416e1d55f2c
         self.hc12 = hc12
         self.received = False
         self.continue_run = True
@@ -174,6 +177,7 @@ class Worker2(QObject):
                     distance = self.result.get('distance')
                     self.updateDistance.emit(distance)
                     QThread.sleep(1)
+<<<<<<< HEAD
             if self.rig is True:
                 self.result = self.data.get()
                 distance = self.result.get('distance')
@@ -181,6 +185,18 @@ class Worker2(QObject):
                     self.updateDistance.emit(distance)
                 else:
                     self.updateDistance.emit(-1)
+=======
+            else:
+                self.hc12.write('$')
+                print("Data Sent!")
+                while data is '':
+                    data = self.hc12.read()
+                print("Data Received!")
+                
+                self.result = self.data.get()
+                distance = self.result.get('distance')
+                self.updateDistance.emit(distance)
+>>>>>>> 9d56d336f77a550eba18ad1469e1c416e1d55f2c
                 QThread.sleep(1)
                         
     def stop(self):
