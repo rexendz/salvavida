@@ -58,6 +58,9 @@ class Worker1(QObject):
     def __init__(self, hc12, parent=None):
         QObject.__init__(self, parent=parent)
         self.hc12 = hc12
+        self.data = root.child('data')
+        self.result = self.data.get()
+        self.rig = self.result.get('rig')
         self.continue_run = True
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
@@ -66,45 +69,64 @@ class Worker1(QObject):
                 
     def do_work(self):
         while self.continue_run:
-            QThread.sleep(1.5)
-            self.hc12.write("AT")
-            read = ''
-            while read == '':
-                read = self.hc12.read()
-            if read == 'OK':
+            if self.rig is False:
+                QThread.sleep(1.5)
+                self.hc12.write("AT")
                 read = ''
-                QThread.sleep(1)
-                self.hc12Detected.emit()
-                self.hc12.write("AT+B9600")
                 while read == '':
                     read = self.hc12.read()
-                if read == 'OK+B9600':
+                if read == 'OK':
                     read = ''
-                    QThread.sleep(1.5)
-                    self.hc12Baud.emit()
-                    self.hc12.write("AT+P8")
+                    QThread.sleep(1)
+                    self.hc12Detected.emit()
+                    self.hc12.write("AT+B9600")
                     while read == '':
                         read = self.hc12.read()
-                    if read == 'OK+P8':
+                    if read == 'OK+B9600':
                         read = ''
-                        QThread.sleep(2.3)
-                        self.hc12Power.emit()
-                        self.hc12.write("AT+C001")
+                        QThread.sleep(1.5)
+                        self.hc12Baud.emit()
+                        self.hc12.write("AT+P8")
                         while read == '':
                             read = self.hc12.read()
-                        if read == 'OK+C001':
-                            QThread.sleep(1.8)
-                            self.hc12Configured.emit()
-                            self.stop()
+                        if read == 'OK+P8':
+                            read = ''
+                            QThread.sleep(2.3)
+                            self.hc12Power.emit()
+                            self.hc12.write("AT+C001")
+                            while read == '':
+                                read = self.hc12.read()
+                            if read == 'OK+C001':
+                                QThread.sleep(1.8)
+                                self.hc12Configured.emit()
+                                self.stop()
+                            else:
+                                print("ERROR SETTING CHANNEL!")
                         else:
-                            print("ERROR SETTING CHANNEL!")
+                            print("ERROR SETTING POWER!")
                     else:
-                        print("ERROR SETTING POWER!")
+                        print("ERROR SETTING BAUD RATE!")
                 else:
-                    print("ERROR SETTING BAUD RATE!")
+                    print("HC12 NOT COMMUNICATING!")
             else:
-                print("HC12 NOT COMMUNICATING!")
-            
+                QThread.sleep(1.5)
+                self.result = self.data.get()
+                QThread.sleep(1)
+                if self.result.get('rpi') is True:
+                    self.hc12Detected.emit()
+                    self.result = self.data.get()
+                    QThread.sleep(1.5)
+                    if self.result.get('rpi') is True:
+                        self.hc12Baud.emit()
+                        self.result = self.data.get()
+                        QThread.sleep(2.3)
+                        if self.result.get('rpi') is True:
+                            self.hc12Power.emit()
+                            self.result = self.data.get()
+                            QThread.sleep(1.8)
+                            if self.result.get('rpi') is True:
+                                self.hc12Configured.emit()
+                                self.stop()
                         
     def stop(self):
         self.continue_run = False
@@ -118,6 +140,8 @@ class Worker2(QObject):
         QObject.__init__(self, parent=parent)
         global root
         self.data = root.child('data')
+        self.result = self.data.get()
+        self.rig = self.result.get('rig')
         self.hc12 = hc12
         self.received = False
         self.continue_run = True
@@ -128,28 +152,36 @@ class Worker2(QObject):
                 
     def do_work(self):
         while self.continue_run:
-            if self.received is False:
-                data = ''
-                while data is '':
-                    data = self.hc12.read()
-                print(data)
-                if 'SOS' in data:
-                    self.hc12.write('SOS')
-                    self.received = True
-                    self.found.emit()
+            if self.rig is False:
+                if self.received is False:
+                    data = ''
+                    while data is '':
+                        data = self.hc12.read()
+                    print(data)
+                    if 'SOS' in data:
+                        self.hc12.write('SOS')
+                        self.received = True
+                        self.found.emit()
+                        QThread.sleep(1)
+                else:
+                    self.hc12.write('$')
+                    print("Data Sent!")
+                    while data is '':
+                        data = self.hc12.read()
+                    print("Data Received!")
+                    
+                    self.result = self.data.get()
+                    distance = self.result.get('distance')
+                    self.updateDistance.emit(distance)
                     QThread.sleep(1)
-            else:
-                self.hc12.write('$')
-                print("Data Sent!")
-                while data is '':
-                    data = self.hc12.read()
-                print("Data Received!")
-                
+            if self.rig is True:
                 self.result = self.data.get()
                 distance = self.result.get('distance')
-                self.updateDistance.emit(distance)
+                if(self.result.get('rpi') and self.result.get('ardu')):
+                    self.updateDistance.emit(distance)
+                else:
+                    self.updateDistance.emit(-1)
                 QThread.sleep(1)
-            
                         
     def stop(self):
         self.continue_run = False
@@ -349,7 +381,7 @@ class ReadPage(Window):
     def updateVal(self):
         if(self.currentSys == 0):
             val = self.val
-            if self.val < 0:
+            if self.val < 1:
                 self.lbl_distance.setText("<1{}".format("m"))
             else:
                 self.lbl_distance.setText("{:.2f}{}".format(val, "m"))
@@ -359,6 +391,8 @@ class ReadPage(Window):
         elif(self.currentSys == 2):
             val = self.val*0.000539957
             self.lbl_distance.setText("{:.2f}{}".format(val, "Nm"))
+        if(self.val < 0):
+            self.lbl_distance.setText("Not Found")
                 
     def btn1Action(self):
         self.currentSys = 0
