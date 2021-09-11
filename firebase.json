@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "salvavida-e0f92",
+  "private_key_id": "c836cd4ac9bae6ceb74fef2be2977eaceff9d647",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQD2ERNdLrD9OTyk\nyVmRlKnzZtAdrTUOKrEIHey1O4ilInv9g0WVs72itekw1cS4tjaEy0oX+7LoQ/H9\neTEk/rb2+MsXHhIv0T2LwWF5cYKqY4154qyyUXwK6LIBOVoVWqKf8KrIkg1g+AIT\nbk4CwoSRcvZFIWDVb/InQNFnCF6uHZt7Z88Laol4B8WP6mVkvvgCoQl5JY7jvutl\n4B1VktUt3DCaQh4gGRWmyxDXu5nxNo1HT0Zm7lEymqwbZvdITlID3nlgCyEd4G9T\nnpfrX36/2l7N3Du7oqAiNdfdJVruYoHHxA9n210Uxowqi5p7wrVaMx4Drc402F5V\nccBHXcBnAgMBAAECggEABUOUQHgRPTmOPJA6JE0j3ZsjdJ8R9X2gT+Yj/DSL1cyJ\nDoFSacNwmRx/IpZQIQt02x5mNWEjEKjzclK3ZG02iM4FujbgeLlnMagvZ6OwAekj\nS6o3u5DWsH0N4czSSoan1/gUDzpgouRrVvMTJCf5IgttjUkLg0VjzscqM6QQMnVQ\n8xYjVCExVaPfP1Q670qd08nNOLlTgrY0WUA57C4VzD+gaAZAin+puBt8V17wXDac\nmupzLiciFt7jhXkVmjDViE71McrBGOF81RpuXMAu9g/YIVGiERMbgYzepFfMZ/BO\nC0kz6IvPwG79BHmcegX3tjet6li2E7AEWmzCcnUOoQKBgQD8ZHGcX9tu+q83pLIp\nr+zvsy18vO+Af4kVPb9CW1iKu9cIfi38zlj1TcYCBDQ9tUaW3sr/BRVAkNmJ3YGZ\nO9oginvsSFE3y34VUyIOP0CvdOfrblcWxXsQ4DxiJd3zMi2gGOdwmVBva9SpVGS7\nRIimS8aTHAiQKJBOhrgZ9lc6uQKBgQD5lXwl1uv10XwuYl4qQ7FTd1M6eIzt4eN5\nf03szDZHGQSsAgecQIyYLD8KpxtP+O38s+s+32q7ipGWTpWPHedHitMfCGXBN55L\npsiYbfAeISsFPN66j6+rn2UoEtyh2UrL2KGbM2MRZ3C1SRKc0UHGtuOSNDiz7q8J\n4j4OLJjEHwKBgQDvs+16mEdtNURn0lEq6lxaoo9W4pGMNpPYypX0zZBf4lotRLkk\nWk1+W+jsTVXYLWvnKZ0dapRuh6MzHl5RS9i0AxICrAQGu4r5ccTsRwKGIL+Kh3bK\nt69TrcNra49Jw6Q1YrGb7N/Jkl2cm/w3JrWpSlpDqOIxF3VGPwhmD+F0cQKBgQDF\nn6UG/VAne/GddMxlIOanVYO0d8H3lnadPL1CNE0CLQAzBwRpp/7re5WLZNhOkag4\nAWrThOqph0ZSQvVPtnjsgDM9jlOsE9MmyfBqKhsIcHD1G8as6JtMBNF/Urga+8iq\n8mS8VIssO8DV+v9e5p7zrtsxaGJBr0wwQlGqvYtVNwKBgHS0D09PE/LCc1iTG3Ar\nbghLbHvvifg/fayf0TNFADaGreFBZCXyhMB44nGjhP29pqyY2lq/9QcUJerm3Dii\n+aZ7gInxUEeKZ+BquQvpManekb0PjoDbM326VDNWy1teU7ORWRhnfc5eAayyv/aI\n3JySIVfPNK5/JRL8CLXl6BR1\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-zoqoz@salvavida-e0f92.iam.gserviceaccount.com",
+  "client_id": "116719563769374901834",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-zoqoz%40salvavida-e0f92.iam.gserviceaccount.com"
+}
