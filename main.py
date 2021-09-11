@@ -7,6 +7,17 @@ import RPi.GPIO as GPIO
 import os
 import sys
 import time
+from firebase_admin import credentials
+from firebase_admin import db
+import firebase_admin
+
+userpath = os.getenv("HOME")
+print(userpath)
+cred = credentials.Certificate(userpath + '/salvavida/firebase.json')
+firebase_admin.initialize_app(cred, {
+'databaseURL' : 'https://salvavida-e0f92-default-rtdb.firebaseio.com/'
+})
+root = db.reference()
 
 
 
@@ -105,6 +116,8 @@ class Worker2(QObject):
         
     def __init__(self, hc12, parent=None):
         QObject.__init__(self, parent=parent)
+        global root
+        self.data = root.child('data')
         self.hc12 = hc12
         self.received = False
         self.continue_run = True
@@ -126,17 +139,14 @@ class Worker2(QObject):
                     self.found.emit()
                     QThread.sleep(1)
             else:
-                data = ''
-                t1 = time.time_ns()
                 self.hc12.write('$')
                 print("Data Sent!")
-                t2 = time.time_ns()
                 while data is '':
                     data = self.hc12.read()
                 print("Data Received!")
-                endTime = time.time_ns()
-                duration = ((endTime - t2)/2) - 62000000
-                distance = (0.299702601 * duration)
+                
+                self.result = self.data.get()
+                distance = self.result.get('distance')
                 self.updateDistance.emit(distance)
                 QThread.sleep(1)
             
